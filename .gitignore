@@ -1,0 +1,11 @@
+*.jpg
+*.png
+*.h5
+*.zip
+*.out
+*.log
+*.pyc
+cookie
+/data
+/models
+download.sh
