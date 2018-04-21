@@ -1,12 +1,15 @@
 from __future__ import print_function, division
 
 import glob
+import skimage.color
 import skimage.io
 import scipy.misc
 import numpy as np
 import tensorflow as tf
 from keras.layers import *
 import keras.backend as K
+
+import matplotlib.pyplot as plt
 
 color2index = {
     (0  , 255, 255) : 0,
@@ -15,7 +18,17 @@ color2index = {
     (0  , 255,   0) : 3,
     (  0,   0, 255) : 4,
     (255, 255, 255) : 5,
-    (  0,   0,   0) : 6,
+    (  0,   0,   0) : 6
+}
+
+index2color = {
+    0 : (0  , 255, 255),
+    1 : (255, 255,   0),
+    2 : (255,   0, 255),
+    3 : (0  , 255,   0),
+    4 : (  0,   0, 255),
+    5 : (255, 255, 255),
+    6 : (  0,   0,   0)
 }
 
 def get_file_paths(dir):
@@ -23,23 +36,57 @@ def get_file_paths(dir):
     mask = glob.glob("{}/*.png".format(dir))
     return content, mask
 
-def resize_img(image, to_size):
-    return scipy.misc.imresize(image, (to_size, to_size, 3), interp='bilinear')
-
 def get_image(path):
     img = skimage.io.imread(path)
+
+    # plt.imshow(img)
+    # plt.show()
     assert len(img.shape) == 3, "# of channels of {} is not 3".format(path)
     return img
 
-def mask_preprocess(img, size=512):
-    height, width = size, size
-    label = np.zeros((height, width, 7), dtype=np.uint8)
+def vgg_sub_mean(img):
+    img = img.astype(np.float32)
+    img[:,:,0] -= 103.939
+    img[:,:,1] -= 116.779
+    img[:,:,2] -= 123.68
+    return img
+
+
+def mask_preprocess(img):
+
+    # fig = plt.figure(figsize=(8, 4))
+    # plt.imshow(img)
+    # ax = plt.subplot(1, 2, 1)
+    # ax.set_title("Original")
+
+
+    result = np.ndarray(shape=img.shape[:2], dtype=int)
+    result[:,:] = -1
+    for rgb, idx in color2index.items():
+        result[(img==rgb).all(2)] = idx # Or float???
+
+    # one_hot_labels = np.zeros((img.shape[0], img.shape[1], 7))
+    # for c in range(7):
+    #     one_hot_labels[:, :, c] = (result == c).astype(int)
+    one_hot_labels = np.eye(7, dtype=np.float32)[result]
+    
+    
+
+    # ax = plt.subplot(1, 2, 2)
+    # plt.imshow(mask_postprocess(one_hot_labels))
+    # ax.set_title("Reconstructed")
+    # plt.show()
+    return one_hot_labels
+
+def mask_postprocess(one_hot):
+    predict = np.argmax(one_hot, axis=-1)
+    height, width = predict.shape[:2]
+    mask = np.zeros((height, width, 3), dtype=np.uint8)
+
     for h in range(height):
         for w in range(width):
-            r, g, b = img[h, w, :]
-            class_ = color2index[(r, g, b)]
-            label[h, w, class_] = 1
-    return label
+            mask[h, w] = index2color[predict[h, w]]
+    return mask
 
 
 def resize_images_bilinear(X, height_factor=1, width_factor=1, target_height=None, target_width=None, data_format='default'):
