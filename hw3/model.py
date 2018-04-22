@@ -91,9 +91,9 @@ class VGG_FCN32(object):
 
         if self.mode == 'train':
             self.model.load_weights(self.vgg_path, by_name=True)
-            for i, layer in enumerate(self.model.layers):
-                if i < 19:
-                    layer.trainable = False
+            # for i, layer in enumerate(self.model.layers):
+            #     if i < 19:
+            #         layer.trainable = False
 
 
             self.summary()
@@ -195,8 +195,8 @@ class VGG_FCN8(object):
 
         if self.mode == 'train':
             self.vgg.load_weights(self.vgg_path, by_name=True)
-            for layer in self.vgg.layers:
-                layer.trainable = False
+            # for layer in self.vgg.layers:
+            #     layer.trainable = False
 
 
         ### Build FCN-8s ###
