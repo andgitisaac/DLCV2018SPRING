@@ -64,12 +64,12 @@ class VGG_FCN32(object):
         conv5_3 = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(conv5_2)
         pool5_1 = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(conv5_3)
 
-        # self.vgg = Model(input=content_input, output=pool5_1)
+        self.vgg = Model(input=content_input, output=pool5_1)
 
-        # if self.mode == 'train':
-        #     self.vgg.load_weights(self.vgg_path, by_name=True)
-        #     for layer in self.vgg.layers:
-        #         layer.trainable = False
+        if self.mode == 'train':
+            self.vgg.load_weights(self.vgg_path, by_name=True)
+            for layer in self.vgg.layers:
+                layer.trainable = False
 
 
         ### Build FCN-32s ###
@@ -90,14 +90,12 @@ class VGG_FCN32(object):
         self.model = Model(input=content_input, output=output)
 
         if self.mode == 'train':
-            self.model.load_weights(self.vgg_path, by_name=True)
-            # for i, layer in enumerate(self.model.layers):
-            #     if i < 19:
-            #         layer.trainable = False
+            # self.model.load_weights(self.vgg_path, by_name=True)
 
 
             self.summary()
-            self.optimizer = Adam(1e-4)
+            # self.optimizer = 'adam'
+            self.optimizer = 'adadelta'
             # self.optimizer = 'sgd'
             self.model.compile(optimizer=self.optimizer,
                                 loss='categorical_crossentropy',
@@ -108,7 +106,7 @@ class VGG_FCN32(object):
     
     def train(self):        
         # es_cb = EarlyStopping(monitor='loss', patience=2, verbose=1, mode='auto')
-        chkpt = 'model/VGG_FCN32_weights.{epoch:02d}.h5'
+        chkpt = 'model/VGG_FCN32.{epoch:02d}.h5'
         # cp_cb = ModelCheckpoint(filepath = chkpt, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
         cp_cb = ModelCheckpoint(filepath = chkpt, monitor='loss', verbose=1, save_best_only=False, mode='auto')
 
@@ -195,13 +193,12 @@ class VGG_FCN8(object):
 
         if self.mode == 'train':
             self.vgg.load_weights(self.vgg_path, by_name=True)
-            # for layer in self.vgg.layers:
-            #     layer.trainable = False
+            for layer in self.vgg.layers:
+                layer.trainable = False
 
 
         ### Build FCN-8s ###
         fcn_input = pool5_1
-        # fcn_input = self.vgg.output
 
         # Fully-Connected layers
         conv6 = Conv2D(4096, (7, 7), activation='relu', padding='same', name='fcn_fc1')(fcn_input)
@@ -230,16 +227,15 @@ class VGG_FCN8(object):
         self.model = Model(input=content_input, output=output)
 
         if self.mode == 'train':
-            self.model.load_weights(self.vgg_path, by_name=True)
-            for i, layer in enumerate(self.model.layers):
-                if i < 19:
-                    layer.trainable = False
+            # self.model.load_weights(self.vgg_path, by_name=True)
+            # for i, layer in enumerate(self.model.layers):
+            #     if i < 19:
+            #         layer.trainable = False
 
 
             self.summary()
-            # self.optimizer = Adam(1e-4)
+            # self.optimizer = 'adam'
             self.optimizer = 'adadelta'
-            # self.optimizer = 'sgd'
             self.model.compile(optimizer=self.optimizer,
                                 loss='categorical_crossentropy',
                                 metrics=['accuracy'])
@@ -274,7 +270,7 @@ class VGG_FCN8(object):
     
     def train(self):        
         # es_cb = EarlyStopping(monitor='loss', patience=2, verbose=1, mode='auto')
-        chkpt = 'model/VGG_FCN8_weights.{epoch:02d}.h5'
+        chkpt = 'model/VGG_FCN8.{epoch:02d}.h5'
         # cp_cb = ModelCheckpoint(filepath = chkpt, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
         cp_cb = ModelCheckpoint(filepath = chkpt, monitor='loss', verbose=1, save_best_only=False, mode='auto')
 
@@ -329,59 +325,6 @@ class VGG_UNET(object):
         ### Build VGG-16 ###
         content_input = Input(shape=(512, 512, 3))
 
-        # # Block 1
-        # x = Conv2D(64, (3, 3), padding='same', name='block1_conv1')(content_input)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        # x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2')(x)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)        
-        # x = MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool')(x)
-
-        # # Block 2
-        # x = Conv2D(128, (3, 3), padding='same', name='block2_conv1')(content_input)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        # x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2')(x)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)        
-        # x = MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool')(x)
-
-        # # Block 3
-        # x = Conv2D(256, (3, 3), padding='same', name='block3_conv1')(content_input)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        # x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2')(x)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        # x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3')(x)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)      
-        # x = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(x)
-
-        # # Block 4
-        # x = Conv2D(512, (3, 3), padding='same', name='block4_conv1')(content_input)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        # x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2')(x)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        # x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3')(x)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        # x = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(x)
-
-        # # Block 5
-        # x = Conv2D(512, (3, 3), padding='same', name='block5_conv1')(content_input)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        # x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2')(x)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        # x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(x)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        # x = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(x)
         # Block 1
         conv1_1 = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1')(content_input)
         conv1_2 = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2')(conv1_1)
@@ -469,9 +412,6 @@ class VGG_UNET(object):
         x = Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal', name='block10_conv1')(x)
         x = BatchNormalization(name='block10_BN1')(x)
         x = Activation('relu', name='block10_relu1')(x)
-        # x = Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal', name='block10_conv2')(x)
-        # x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
 
         x = Conv2D(7, (1, 1), padding = 'same', kernel_initializer = 'he_normal', name='output')(x)
         output = Activation('softmax')(x)
@@ -480,13 +420,10 @@ class VGG_UNET(object):
 
         if self.mode == 'train':
             self.summary()
-            # self.optimizer = 'adadelta'
-            self.optimizer = 'adam'
-            # self.optimizer = SGD(lr=0.0001, momentum=0.9)
+            # self.optimizer = 'adam'
+            self.optimizer = 'adadelta'
             self.model.compile(optimizer=self.optimizer,
-                                # loss='mse',
                                 loss='categorical_crossentropy',
-                                # loss=self.loss_fn,
                                 metrics=['accuracy'])
         elif self.mode == 'test':
             self.load(self.model_path)
@@ -494,7 +431,7 @@ class VGG_UNET(object):
     
     def train(self):        
         # es_cb = EarlyStopping(monitor='loss', patience=2, verbose=1, mode='auto')
-        chkpt = 'model/VGG_UNET.{epoch:02d}.h5'
+        chkpt = 'model/VGG_SEGNET.{epoch:02d}.h5'
         # cp_cb = ModelCheckpoint(filepath = chkpt, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
         cp_cb = ModelCheckpoint(filepath = chkpt, monitor='loss', verbose=1, save_best_only=False, mode='auto')
 
@@ -516,7 +453,7 @@ class VGG_UNET(object):
         # self.model.summary()
 
     def plot(self):
-        plot_model(self.model, to_file='VGG16_UNET.png') 
+        plot_model(self.model, to_file='VGG16_SEGNET.png') 
     
     def decode(self, x):
         return self.model.predict(x)
