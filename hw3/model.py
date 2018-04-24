@@ -4,14 +4,13 @@ import numpy as np
 from ops import batch_gen
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.utils import plot_model
-from keras.layers import Input, Lambda, Conv2D, MaxPooling2D, UpSampling2D, Dropout, Activation, Conv2DTranspose, Concatenate, BatchNormalization, Cropping2D, Add
+from keras.layers import Input, Lambda, Conv2D, MaxPooling2D, UpSampling2D, Dropout, Activation, Conv2DTranspose, Cropping2D, Add
 from keras.models import Model
-from keras.optimizers import SGD, Adam
 from keras.models import load_model
 
 class VGG_FCN32(object):
     def __init__(self,
-                batch_size,
+                batch_size=4,
                 mode='train',
                 epochs=None,
                 steps=None,
@@ -74,7 +73,6 @@ class VGG_FCN32(object):
 
         ### Build FCN-32s ###
         fcn_input = pool5_1
-        # fcn_input = self.vgg.output
 
         # Fully-Connected layers
         conv6 = Conv2D(4096, (7, 7), activation='relu', padding='same', name='fcn_fc1')(fcn_input)
@@ -90,13 +88,8 @@ class VGG_FCN32(object):
         self.model = Model(input=content_input, output=output)
 
         if self.mode == 'train':
-            # self.model.load_weights(self.vgg_path, by_name=True)
-
-
             self.summary()
-            # self.optimizer = 'adam'
             self.optimizer = 'adadelta'
-            # self.optimizer = 'sgd'
             self.model.compile(optimizer=self.optimizer,
                                 loss='categorical_crossentropy',
                                 metrics=['accuracy'])
@@ -122,12 +115,10 @@ class VGG_FCN32(object):
         plot_model(self.model, to_file='VGG16_FCN32s.png')
 
     def summary(self):
-        # self.vgg.summary()
         self.model.summary()
 
     def load(self, path):
         self.model.load_weights(path, by_name=True)
-        # self.model.summary()
         
     
     def decode(self, x):
@@ -136,7 +127,7 @@ class VGG_FCN32(object):
 
 class VGG_FCN8(object):
     def __init__(self,
-                batch_size,
+                batch_size=4,
                 mode='train',
                 epochs=None,
                 steps=None,
@@ -227,14 +218,7 @@ class VGG_FCN8(object):
         self.model = Model(input=content_input, output=output)
 
         if self.mode == 'train':
-            # self.model.load_weights(self.vgg_path, by_name=True)
-            # for i, layer in enumerate(self.model.layers):
-            #     if i < 19:
-            #         layer.trainable = False
-
-
             self.summary()
-            # self.optimizer = 'adam'
             self.optimizer = 'adadelta'
             self.model.compile(optimizer=self.optimizer,
                                 loss='categorical_crossentropy',
@@ -286,177 +270,10 @@ class VGG_FCN8(object):
         plot_model(self.model, to_file='VGG16_FCN8s.png')
 
     def summary(self):
-        # self.vgg.summary()
         self.model.summary()
 
     def load(self, path):
-        self.model.load_weights(path, by_name=True)
-        # self.model.summary()
-        
+        self.model.load_weights(path, by_name=True)        
     
     def decode(self, x):
         return self.model.predict(x)
-
-
-
-class VGG_UNET(object):
-    def __init__(self,
-                batch_size,
-                mode='train',
-                epochs=None,
-                steps=None,
-                learning_rate=0.0001,
-                train_dir=None,
-                val_dir=None,            
-                vgg_path=None,
-                model_path=None,                
-                weight_decay=0.):
-
-        self.mode = mode
-        self.vgg_path = vgg_path
-        self.model_path = model_path
-        self.train_dir = train_dir
-        self.val_dir = val_dir
-        self.batch_size = batch_size
-        self.epochs = epochs
-        self.steps = steps
-        self.learning_rate = learning_rate
-        
-        ### Build VGG-16 ###
-        content_input = Input(shape=(512, 512, 3))
-
-        # Block 1
-        conv1_1 = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1')(content_input)
-        conv1_2 = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2')(conv1_1)
-        pool1_1 = MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool')(conv1_2)
-
-        # Block 2
-        conv2_1 = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv1')(pool1_1)
-        conv2_2 = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2')(conv2_1)
-        pool2_1 = MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool')(conv2_2)
-
-        # Block 3
-        conv3_1 = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1')(pool2_1)
-        conv3_2 = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2')(conv3_1)
-        conv3_3 = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3')(conv3_2)
-        pool3_1 = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(conv3_3)
-
-        # Block 4
-        conv4_1 = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1')(pool3_1)
-        conv4_2 = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2')(conv4_1)
-        conv4_3 = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3')(conv4_2)
-        pool4_1 = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(conv4_3)
-
-        # Block 5
-        conv5_1 = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1')(pool4_1)
-        conv5_2 = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2')(conv5_1)
-        conv5_3 = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(conv5_2)
-        pool5_1 = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(conv5_3)
-
-        self.vgg = Model(input=content_input, output=pool5_1)
-
-        if self.mode == 'train':
-            self.vgg.load_weights(self.vgg_path, by_name=True)
-            for layer in self.vgg.layers:
-                layer.trainable = False
-
-        ### Build Decoder ###
-        x = pool5_1
-        x = Dropout(0.5)(x)
-
-        x = UpSampling2D(size=(2, 2), name='block6_up')(x)
-        x = Conv2D(512, (3, 3), padding='same', kernel_initializer='he_normal', name='block6_conv1')(x)
-        x = BatchNormalization(name='block6_BN1')(x)
-        x = Activation('relu', name='block6_relu1')(x)
-        x = Conv2D(512, (3, 3), padding='same', kernel_initializer='he_normal', name='block6_conv2')(x)
-        x = BatchNormalization(name='block6_BN2')(x)
-        x = Activation('relu', name='block6_relu2')(x)
-        x = Conv2D(512, (3, 3), padding='same', kernel_initializer='he_normal', name='block6_conv3')(x)
-        x = BatchNormalization(name='block6_BN3')(x)
-        x = Activation('relu', name='block6_relu3')(x)
-        x = Dropout(0.5)(x)
-
-        x = UpSampling2D(size=(2, 2), name='block7_up')(x)
-        x = Conv2D(512, (3, 3), padding='same', kernel_initializer='he_normal', name='block7_conv1')(x)
-        x = BatchNormalization(name='block7_BN1')(x)
-        x = Activation('relu', name='block7_relu1')(x)
-        x = Conv2D(512, (3, 3), padding='same', kernel_initializer='he_normal', name='block7_conv2')(x)
-        x = BatchNormalization(name='block7_BN2')(x)
-        x = Activation('relu', name='block7_relu2')(x)
-        x = Conv2D(256, (3, 3), padding='same', kernel_initializer='he_normal', name='block7_conv3')(x)
-        x = BatchNormalization(name='block7_BN3')(x)
-        x = Activation('relu', name='block7_relu3')(x)
-        x = Dropout(0.5)(x)
-
-        x = UpSampling2D(size=(2, 2), name='block8_up')(x)
-        x = Conv2D(256, (3, 3), padding='same', kernel_initializer='he_normal', name='block8_conv1')(x)
-        x = BatchNormalization(name='block8_BN1')(x)
-        x = Activation('relu', name='block8_relu1')(x)
-        x = Conv2D(256, (3, 3), padding='same', kernel_initializer='he_normal', name='block8_conv2')(x)
-        x = BatchNormalization(name='block8_BN2')(x)
-        x = Activation('relu', name='block8_relu2')(x)
-        x = Conv2D(128, (3, 3), padding='same', kernel_initializer='he_normal', name='block8_conv3')(x)
-        x = BatchNormalization(name='block8_BN3')(x)
-        x = Activation('relu', name='block8_relu3')(x)
-        x = Dropout(0.5)(x)
-
-        x = UpSampling2D(size=(2, 2), name='block9_up')(x)
-        x = Conv2D(128, (3, 3), padding='same', kernel_initializer='he_normal', name='block9_conv1')(x)
-        x = BatchNormalization(name='block9_BN1')(x)
-        x = Activation('relu', name='block9_relu1')(x)
-        x = Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal', name='block9_conv2')(x)
-        x = BatchNormalization(name='block9_BN2')(x)
-        x = Activation('relu', name='block9_relu2')(x)
-
-        x = UpSampling2D(size=(2, 2), name='block10_up')(x)
-        x = Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal', name='block10_conv1')(x)
-        x = BatchNormalization(name='block10_BN1')(x)
-        x = Activation('relu', name='block10_relu1')(x)
-
-        x = Conv2D(7, (1, 1), padding = 'same', kernel_initializer = 'he_normal', name='output')(x)
-        output = Activation('softmax')(x)
-
-        self.model = Model(input=content_input, output=output)
-
-        if self.mode == 'train':
-            self.summary()
-            # self.optimizer = 'adam'
-            self.optimizer = 'adadelta'
-            self.model.compile(optimizer=self.optimizer,
-                                loss='categorical_crossentropy',
-                                metrics=['accuracy'])
-        elif self.mode == 'test':
-            self.load(self.model_path)
-            print("------------Weight Loaded--------------")
-    
-    def train(self):        
-        # es_cb = EarlyStopping(monitor='loss', patience=2, verbose=1, mode='auto')
-        chkpt = 'model/VGG_SEGNET.{epoch:02d}.h5'
-        # cp_cb = ModelCheckpoint(filepath = chkpt, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
-        cp_cb = ModelCheckpoint(filepath = chkpt, monitor='loss', verbose=1, save_best_only=False, mode='auto')
-
-
-        self.model.fit_generator(batch_gen(self.train_dir, self.batch_size),
-                            epochs=self.epochs,
-                            steps_per_epoch=self.steps,
-                            # validation_data=next(batch_gen(self.val_dir, self.batch_size)),
-                            verbose=1,
-                            callbacks=[cp_cb])
-
-
-    def summary(self):
-        # self.vgg.summary()
-        self.model.summary()
-
-    def load(self, path):
-        self.model.load_weights(path, by_name=True)
-        # self.model.summary()
-
-    def plot(self):
-        plot_model(self.model, to_file='VGG16_SEGNET.png') 
-    
-    def decode(self, x):
-        return self.model.predict(x)
-    
-
-
