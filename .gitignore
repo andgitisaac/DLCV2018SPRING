@@ -5,8 +5,10 @@
 *.out
 *.log
 *.pyc
-.gz
+*.gz
 cookie
+/sample
+/logs
 /data
-/models
-
+/model
+/__pycache__
