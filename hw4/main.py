@@ -8,7 +8,7 @@ flags.DEFINE_string('model_save_path', 'model', "directory for saving the model"
 flags.DEFINE_string('sample_save_path', 'sample', "directory for saving the sampled images")
 flags.DEFINE_integer('batch_size', 32, "batch size")
 flags.DEFINE_integer('latent_dim', 64, "dimension of latent space")
-flags.DEFINE_integer('train_iter', 30000, "number of training steps")
+flags.DEFINE_integer('train_iter', 300000, "number of training steps")
 FLAGS = flags.FLAGS
 
 def main(_):
@@ -26,7 +26,7 @@ def main(_):
     if FLAGS.mode == 'train':
         solver.train()
     elif FLAGS.mode == 'reconstruct':
-        solver.eval()
+        solver.reconstruct()
     elif FLAGS.mode == 'sample':
         solver.sample()
     elif FLAGS.mode == 'encode':

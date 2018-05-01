@@ -8,7 +8,7 @@ from utils import load_pickle
 
 class Solver(object):
 
-    def __init__(self, model, batch_size=32, train_iter=30000, sample_iter=100,
+    def __init__(self, model, batch_size=32, train_iter=300000, sample_iter=100,
                 data_path='data', log_dir='logs', sample_save_path='sample',
                 model_save_path='model', test_model='model/vae-300000'):
         
