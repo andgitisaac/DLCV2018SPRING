@@ -109,16 +109,19 @@ class VAE(object):
                     tf.summary.histogram(var.op.name, var)
 
         elif self.mode == 'reconstruct' or 'sample' or 'encode':
-            self.images = tf.placeholder(tf.float32, [None, 64, 64, 3], 'input_images')
-
-            encoded = self.encoder(self.images, self.latent_dim)
-
-            self.mean = encoded[:, :self.latent_dim]
-            logvar = encoded[:, self.latent_dim:]
-            stddev = tf.sqrt(tf.exp(logvar))
-            epsilon = tf.random_normal([self.batch_size, self.latent_dim])
-            self.z = self.mean + stddev * epsilon
-
-            self.reconst = self.decoder(self.z)
-        
+            with tf.variable_scope('vae'):
+                self.images = tf.placeholder(tf.float32, [None, 64, 64, 3], 'input_images')
+                
+                with tf.variable_scope('encoder'):
+                    self.encoded = self.encoder(self.images, self.latent_dim)
+                
+                with tf.variable_scope('latent'):
+                    self.mean = self.encoded[:, :self.latent_dim]
+                    self.logvar = self.encoded[:, self.latent_dim:]
+                    stddev = tf.sqrt(tf.exp(self.logvar))
+                    epsilon = tf.random_normal([self.batch_size, self.latent_dim])
+                    self.z = self.mean + stddev * epsilon
+                
+                with tf.variable_scope('decoder'):
+                    self.reconst = self.decoder(self.z)        
     
