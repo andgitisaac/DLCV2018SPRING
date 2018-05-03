@@ -73,6 +73,7 @@ class GAN_Solver(object):
                 # train G
                 sess.run(model.g_train_op, feed_dict=feed_dict)
                 sess.run(model.g_train_op, feed_dict=feed_dict)
+                sess.run(model.g_train_op, feed_dict=feed_dict)
 
                 # print("D_REAL: ", sess.run(model.d_real, feed_dict))
                 # print("D_FAKE: ", sess.run(model.d_fake, feed_dict))
