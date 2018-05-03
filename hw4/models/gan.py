@@ -101,9 +101,13 @@ class GAN(object):
                 # reference: https://github.com/gitlimlab/SSGAN-Tensorflow/blob/master/model.py
                 with tf.variable_scope('Accuracy_D'):
                     with tf.variable_scope('Accuracy_D_real'):
-                        self.acc_d_real = tf.reduce_mean(tf.cast(self.d_real > .5, tf.float32))
+                        sigmoid_d_real = tf.nn.sigmoid(self.d_real)
+                        self.acc_d_real = tf.reduce_mean(tf.cast(sigmoid_d_real > .5, tf.float32))
+                        # self.acc_d_real = tf.reduce_mean(tf.cast(self.d_real > .5, tf.float32))
                     with tf.variable_scope('Accuracy_D_fake'):
-                        self.acc_d_fake = tf.reduce_mean(tf.cast(self.d_fake < .5, tf.float32))
+                        sigmoid_d_fake = tf.nn.sigmoid(self.d_fake)
+                        self.acc_d_fake = tf.reduce_mean(tf.cast(sigmoid_d_fake < .5, tf.float32))
+                        # self.acc_d_fake = tf.reduce_mean(tf.cast(self.d_fake < .5, tf.float32))
 
                 # optimizer
                 t_vars = tf.trainable_variables()
