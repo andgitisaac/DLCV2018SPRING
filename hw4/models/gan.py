@@ -103,7 +103,7 @@ class GAN(object):
                     with tf.variable_scope('Accuracy_D_real'):
                         self.acc_d_real = tf.reduce_mean(tf.cast(self.d_real > .5, tf.float32))
                     with tf.variable_scope('Accuracy_D_fake'):
-                        self.acc_d_fake = tf.reduce_mean(tf.cast(self.d_real < .5, tf.float32))
+                        self.acc_d_fake = tf.reduce_mean(tf.cast(self.d_fake < .5, tf.float32))
 
                 # optimizer
                 t_vars = tf.trainable_variables()
