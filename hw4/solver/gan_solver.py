@@ -27,7 +27,7 @@ class GAN_Solver(object):
     
     def generate_z(self, batch_size, z_dim):
         return np.random.uniform(-1, 1, size=(batch_size, z_dim)).astype(np.float32)
-
+    
     def train(self):
         # load dataset
         images, _ = load_pickle(self.data_path, split='train')
@@ -94,13 +94,14 @@ class GAN_Solver(object):
 
     def load_latest(self, saver, sess):
         if os.path.exists(os.path.join(self.model_save_path,'checkpoint')):
-            print("Restoring checkpoint")
+            print("!!!!!Restoring checkpoint from {}".format(self.model_save_path))
             saver.restore(sess, tf.train.latest_checkpoint(self.model_save_path))
             print("Checpoint restored!")
 
     
     def sample(self):
         # build model
+        print("SAMPLE!!!!!!!!!!!!")
         model = self.model
         model.build_model()
 
