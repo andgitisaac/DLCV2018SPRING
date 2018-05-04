@@ -144,8 +144,8 @@ class GAN(object):
             with tf.variable_scope('gan'):
                 self.z = tf.placeholder(tf.float32, [None, self.z_dim], name="input_z")
                 
-                with tf.variable_scope('generator'):
-                    self.fake_images = self.generator(self.z)
+                # with tf.variable_scope('generator'):
+                self.fake_images = self.generator(self.z)
 
 
         
