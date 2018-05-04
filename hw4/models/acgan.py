@@ -102,8 +102,7 @@ class ACGAN(object):
                 
                 # concatenate noise and one-hot labels together
                 self.noise = tf.placeholder(tf.float32, [None, self.z_dim], name='sample_noise')
-                self.sample_labels =  tf.placeholder(tf.float32, [None, 2], name='sample_label')  
-
+                self.sample_labels =  tf.placeholder(tf.float32, [None, 2], name='sample_label')
                 self.z = tf.concat(axis=1, values=[self.sample_labels, self.noise])            
                 
                 self.fake_images = self.generator(self.z)
@@ -136,11 +135,17 @@ class ACGAN(object):
                     with tf.variable_scope('Accuracy_D_real'):
                         sigmoid_d_real = tf.nn.sigmoid(self.d_real)
                         self.acc_d_real = tf.reduce_mean(tf.cast(sigmoid_d_real > .5, tf.float32))
-                        # self.acc_d_real = tf.reduce_mean(tf.cast(self.d_real > .5, tf.float32))
                     with tf.variable_scope('Accuracy_D_fake'):
                         sigmoid_d_fake = tf.nn.sigmoid(self.d_fake)
                         self.acc_d_fake = tf.reduce_mean(tf.cast(sigmoid_d_fake < .5, tf.float32))
-                        # self.acc_d_fake = tf.reduce_mean(tf.cast(self.d_fake < .5, tf.float32))
+                
+                with tf.variable_scope('Accuracy_Aux'):
+                    with tf.variable_scope('Accuracy_Aux_real'):
+                        correct_prediction = tf.equal(tf.argmax(tf.nn.softmax(self.cls_real), 1), tf.argmax(self.real_labels, 1))
+                        self.acc_cls_real = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+                    with tf.variable_scope('Accuracy_Aux_fake'):
+                        correct_prediction = tf.equal(tf.argmax(tf.nn.softmax(self.cls_fake), 1), tf.argmax(self.sample_labels, 1))
+                        self.acc_cls_fake = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
                 # optimizer
                 t_vars = tf.trainable_variables()
@@ -158,22 +163,22 @@ class ACGAN(object):
                 loss_d_real_summary = tf.summary.scalar('loss_d_real', self.loss_d_real)
                 loss_d_fake_summary = tf.summary.scalar('loss_d_fake', self.loss_d_fake)
                 loss_g_summary = tf.summary.scalar('loss_g', self.loss_g)
-                loss_aux_real_summary = tf.summary.scalar('loss_aux_real', self.loss_cls_real)
-                loss_aux_fake_summary = tf.summary.scalar('loss_aux_fake', self.loss_cls_fake)
                 loss_aux_summary = tf.summary.scalar('loss_aux', self.loss_cls)
                 acc_d_real_summary = tf.summary.scalar('acc_d_real', self.acc_d_real)
-                acc_d_fake_summary = tf.summary.scalar('acc_d_fake', self.acc_d_fake)                
+                acc_d_fake_summary = tf.summary.scalar('acc_d_fake', self.acc_d_fake)
+                acc_aux_real_summary = tf.summary.scalar('acc_aux_real', self.acc_cls_real)
+                acc_aux_fake_summary = tf.summary.scalar('acc_aux_fake', self.acc_cls_fake)               
                 generated_images_summary = tf.summary.image('generated_images', self.fake_images, max_outputs=9)
                 
                 self.summary_op = tf.summary.merge([loss_d_summary, 
                                                         loss_d_real_summary, 
                                                         loss_d_fake_summary,
                                                         loss_g_summary,
-                                                        loss_aux_real_summary,
-                                                        loss_aux_fake_summary,
                                                         loss_aux_summary,
                                                         acc_d_real_summary,
                                                         acc_d_fake_summary,
+                                                        acc_aux_real_summary,
+                                                        acc_aux_fake_summary,
                                                         generated_images_summary])
                 
                 for var in tf.trainable_variables():
