@@ -1,8 +1,10 @@
 import tensorflow as tf
 from models.vae import VAE
 from models.gan import GAN
+from models.acgan import ACGAN
 from solver.vae_solver import VAE_Solver
 from solver.gan_solver import GAN_Solver
+from solver.acgan_solver import ACGAN_Solver
 
 flags = tf.app.flags
 flags.DEFINE_string('network', 'vae', "'vae', 'gan', 'acgan' or 'infogan'")
@@ -41,6 +43,26 @@ def main(_):
         z_dim = 100
         model = GAN(mode=FLAGS.mode)
         solver = GAN_Solver(model, batch_size=FLAGS.batch_size, z_dim=z_dim, train_iter=FLAGS.train_iter, log_dir=FLAGS.log_save_path,
+                        model_save_path=FLAGS.model_save_path, sample_save_path=FLAGS.sample_save_path)
+        
+        # create directories if not exist
+        if not tf.gfile.Exists(FLAGS.model_save_path):
+            tf.gfile.MakeDirs(FLAGS.model_save_path)
+        if not tf.gfile.Exists(FLAGS.sample_save_path):
+            tf.gfile.MakeDirs(FLAGS.sample_save_path)
+        
+        if FLAGS.mode == 'train':
+            solver.train()
+        elif FLAGS.mode == 'sample':
+            print("GAN SAMPLE")
+            solver.sample()
+
+    elif FLAGS.network == 'acgan':
+        z_dim = 100
+        feature_class = 'Smiling'
+        model = ACGAN(mode=FLAGS.mode, batch_size=FLAGS.batch_size)
+        solver = ACGAN_Solver(model, batch_size=FLAGS.batch_size, z_dim=z_dim, feature_class=feature_class, 
+                        train_iter=FLAGS.train_iter, log_dir=FLAGS.log_save_path,
                         model_save_path=FLAGS.model_save_path, sample_save_path=FLAGS.sample_save_path)
         
         # create directories if not exist
