@@ -9,6 +9,7 @@ class ACGAN(object):
         self.z_dim = z_dim
         self.learning_rate = learning_rate
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
+        self.class_loss_weight = 2
 
     def batch_norm_params(self, is_training):
         return {
@@ -56,9 +57,9 @@ class ACGAN(object):
                                 kernel_size=[5, 5],
                                 stride=2, padding="SAME"):
                 with slim.arg_scope([slim.fully_connected],
-                                    activation_fn=tf.nn.relu,
-                                    normalizer_fn=slim.batch_norm,
-                                    normalizer_params=self.batch_norm_params(self.mode=='train'),
+                                    activation_fn=tf.nn.leaky_relu,
+                                    normalizer_fn=None,
+                                    normalizer_params=None,
                                     weights_initializer=tf.truncated_normal_initializer(stddev=0.02)):                
                     net = slim.conv2d(input_, 64,
                                         normalizer_fn=None,
@@ -69,16 +70,9 @@ class ACGAN(object):
                     net = slim.conv2d(net, 512, scope='conv4')          # (batch_size, 4, 4, 512)
 
                     recog_class = slim.flatten(net)
-                    recog_class = slim.fully_connected(recog_class, 512,
-                                            activation_fn=tf.nn.leaky_relu,
-                                            normalizer_fn=None,
-                                            normalizer_params=None,
-                                            scope="predict_class_fc1")
-                    recog_class = slim.fully_connected(recog_class, num_classes,
-                                            activation_fn=None,
-                                            normalizer_fn=None,
-                                            normalizer_params=None,
-                                            scope="predict_class_fc2")
+                    recog_class = slim.fully_connected(recog_class, 1024, scope="predict_class_fc1")
+                    recog_class = slim.fully_connected(recog_class, 128, scope="predict_class_fc2")
+                    recog_class = slim.fully_connected(recog_class, num_classes, scope="predict_class_fc3")
                     net = slim.conv2d(net, 1,
                                         activation_fn=None,
                                         kernel_size=[4, 4], 
@@ -97,8 +91,9 @@ class ACGAN(object):
         
         if self.mode == 'train':
             with tf.variable_scope('gan'):
-                self.real_images = tf.placeholder(tf.float32, [None, 64, 64, 3], 'real_images')
+                self.real_images = tf.placeholder(tf.float32, [None, 64, 64, 3], name='real_images')
                 self.real_labels = tf.placeholder(tf.float32, [None, self.num_classes], name='real_label')
+                self.flip_labels = tf.placeholder(tf.bool, name='label_is_flip')
                 
                 # concatenate noise and one-hot labels together
                 self.noise = tf.placeholder(tf.float32, [None, self.z_dim], name='sample_noise')
@@ -111,23 +106,30 @@ class ACGAN(object):
                 self.d_fake, self.cls_fake = self.discriminator(self.fake_images, self.num_classes, reuse=True)                
 
                 # loss
-                with tf.variable_scope('Loss_D'):
-                    with tf.variable_scope('Loss_D_real'):
-                        self.loss_d_real = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.ones_like(self.d_real), logits=self.d_real)
-                    with tf.variable_scope('Loss_D_fake'):
-                        self.loss_d_fake = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(self.d_fake), logits=self.d_fake)
-                    with tf.variable_scope('Loss_D_total'):
-                        self.loss_d = self.loss_d_real + self.loss_d_fake
-                
-                with tf.variable_scope('Loss_G'):
-                    self.loss_g = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.ones_like(self.d_fake), logits=self.d_fake)
-
                 with tf.variable_scope('Loss_Aux'):
-                    # print(self.cls_real.get_shape().as_list())
-                    # print(self.real_labels.get_shape().as_list())
                     self.loss_cls_real = tf.losses.softmax_cross_entropy(logits=self.cls_real, onehot_labels=self.real_labels)
                     self.loss_cls_fake = tf.losses.softmax_cross_entropy(logits=self.cls_fake, onehot_labels=self.sample_labels)
                     self.loss_cls = self.loss_cls_real + self.loss_cls_fake
+
+                with tf.variable_scope('Loss_D'):
+                    real_labels = tf.cond(self.flip_labels, true_fn=(lambda: tf.zeros_like(self.d_real)), false_fn=(lambda: tf.ones_like(self.d_real)))
+                    fake_labels = tf.cond(self.flip_labels, true_fn=(lambda: tf.ones_like(self.d_fake)), false_fn=(lambda: tf.zeros_like(self.d_fake)))
+
+
+                    with tf.variable_scope('Loss_D_real'):
+                        # self.loss_d_real = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.ones_like(self.d_real), logits=self.d_real)
+                        self.loss_d_real = tf.losses.sigmoid_cross_entropy(multi_class_labels=real_labels, logits=self.d_real)
+                    with tf.variable_scope('Loss_D_fake'):
+                        # self.loss_d_fake = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(self.d_fake), logits=self.d_fake)                        self.loss_d_fake = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(self.d_fake), logits=self.d_fake)                        self.loss_d_fake = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(self.d_fake), logits=self.d_fake)
+                        self.loss_d_fake = tf.losses.sigmoid_cross_entropy(multi_class_labels=fake_labels, logits=self.d_fake)
+                    with tf.variable_scope('Loss_D_total'):
+                        self.loss_d = self.loss_d_real + self.loss_d_fake + self.class_loss_weight * self.loss_cls
+                
+                with tf.variable_scope('Loss_G'):
+                    self.loss_g_gen = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.ones_like(self.d_fake), logits=self.d_fake)
+                    self.loss_g = self.loss_g_gen + self.class_loss_weight * self.loss_cls
+
+
 
                 # accuracy
                 # reference: https://github.com/gitlimlab/SSGAN-Tensorflow/blob/master/model.py
@@ -160,8 +162,8 @@ class ACGAN(object):
                
                 # summary op
                 loss_d_summary = tf.summary.scalar('loss_d', self.loss_d)
-                loss_d_real_summary = tf.summary.scalar('loss_d_real', self.loss_d_real)
-                loss_d_fake_summary = tf.summary.scalar('loss_d_fake', self.loss_d_fake)
+                # loss_d_real_summary = tf.summary.scalar('loss_d_real', self.loss_d_real)
+                # loss_d_fake_summary = tf.summary.scalar('loss_d_fake', self.loss_d_fake)
                 loss_g_summary = tf.summary.scalar('loss_g', self.loss_g)
                 loss_aux_summary = tf.summary.scalar('loss_aux', self.loss_cls)
                 acc_d_real_summary = tf.summary.scalar('acc_d_real', self.acc_d_real)
@@ -171,8 +173,8 @@ class ACGAN(object):
                 generated_images_summary = tf.summary.image('generated_images', self.fake_images, max_outputs=9)
                 
                 self.summary_op = tf.summary.merge([loss_d_summary, 
-                                                        loss_d_real_summary, 
-                                                        loss_d_fake_summary,
+                                                        # loss_d_real_summary, 
+                                                        # loss_d_fake_summary,
                                                         loss_g_summary,
                                                         loss_aux_summary,
                                                         acc_d_real_summary,
@@ -185,7 +187,13 @@ class ACGAN(object):
                     tf.summary.histogram(var.op.name, var)
 
         elif self.mode == 'sample':
-            pass
+            with tf.variable_scope('gan'):                
+                # concatenate noise and one-hot labels together
+                self.noise = tf.placeholder(tf.float32, [None, self.z_dim], name='sample_noise')
+                self.sample_labels =  tf.placeholder(tf.float32, [None, 2], name='sample_label')
+                self.z = tf.concat(axis=1, values=[self.sample_labels, self.noise])            
+                
+                self.fake_images = self.generator(self.z)
 
 
         

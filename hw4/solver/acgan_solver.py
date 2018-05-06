@@ -3,7 +3,8 @@ import time
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-from utils import load_pickle, grid_plot
+from keras.utils import to_categorical
+from utils import load_pickle, grid_plot_pair
 
 
 class ACGAN_Solver(object):
@@ -101,11 +102,17 @@ class ACGAN_Solver(object):
 
                 feed_dict = {model.noise: noise,
                             model.sample_labels: sample_labels,
+                            model.flip_labels: False,
                             model.real_images: batch_images,
                             model.real_labels: batch_attrs_onehot}
 
                 # train D
                 sess.run(model.d_train_op, feed_dict=feed_dict)
+
+                # flip labels to weaken D
+                if (step+1) % 2 == 0:
+                    feed_dict[model.flip_labels] = True
+                    sess.run(model.d_train_op, feed_dict=feed_dict)
 
                 # train G
                 sess.run(model.g_train_op, feed_dict=feed_dict)
@@ -123,7 +130,7 @@ class ACGAN_Solver(object):
                     print ('Step: [%d/%d] loss_d: [%.5f] loss_g: [%.5f] Time: [%.5f]' \
                                %(step+1, self.train_iter, loss_d, loss_g, time.time() - start))
                 
-                if (step+1) % 1000 == 0:
+                if (step+1) % 2000 == 0:
                     saver.save(sess, os.path.join(self.model_save_path, 'gan'), global_step=step+1)
                     print ('model/gan-%d saved' %(step+1))
 
@@ -146,16 +153,23 @@ class ACGAN_Solver(object):
             saver = tf.train.Saver()
             self.load_latest(saver, sess)
 
-            batch_size = self.batch_size if self.batch_size <= 32 else 32
+            # batch_size = self.batch_size if self.batch_size <= 32 else 32
+            batch_size = 20
+
+            sample_labels = [ i // (batch_size // self.num_classes) for i in range(self.batch_size)]
+            sample_labels = to_categorical(sample_labels)
+
+
             print('start sampling..!')
             for i in range(64):
-                z = self.generate_z(self.batch_size, self.z_dim)
-                feed_dict = {model.z: z}
+                noise = self.generate_z(batch_size//2, self.z_dim)
+                noise = np.concatenate((noise, noise), axis=0)
+                feed_dict = {model.noise: noise, model.sample_labels: sample_labels}
 
                 sample = sess.run(model.fake_images, feed_dict)
 
                 output_name = os.path.join(self.sample_save_path, '{:03d}.jpg'.format(i))
                 print('Saving to {}'.format(output_name))
-                grid_plot(sample, 8, output_name)
+                grid_plot_pair(sample[:batch_size//2], sample[batch_size//2:], batch_size//2, output_name)
 
                 
