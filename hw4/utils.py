@@ -31,7 +31,7 @@ def grid_plot_pair(original, reconst, n_col, output_name):
     assert batch_size % n_col == 0, 'Adjust n_col {} to be a factor of batch size {}'.format(n_col, batch_size)
     
     n_row = batch_size // n_col
-    grid = Image.new('RGB', (2*n_row*height, n_col*width))
+    grid = Image.new('RGB', (n_col*width, 2*n_row*height))
 
     original = postpro(original)
     reconst = postpro(reconst)
