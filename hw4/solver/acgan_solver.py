@@ -30,13 +30,20 @@ class ACGAN_Solver(object):
     def generate_z(self, batch_size, z_dim):
         return np.random.uniform(-1, 1, size=(batch_size, z_dim)).astype(np.float32)
     
-    def generate_cls(self, batch_size, num_classes):
-        # reference from https://github.com/burness/tensorflow-101/blob/master/GAN/AC-GAN/train.py#L58
-        z_cat = tf.multinomial(tf.ones((batch_size, num_classes), dtype=tf.float32) / num_classes, 1)
-        z_cat = tf.squeeze(z_cat, -1)
-        z_cat = tf.cast(z_cat, tf.int32)
-        z_cat = tf.one_hot(z_cat, depth = num_classes)
-        return z_cat
+    # transforming tensor to numpy gets slower in for-loop...
+    # rewrite with a pure numpy version
+    # def generate_cls(self, batch_size, num_classes):
+    #     # reference from https://github.com/burness/tensorflow-101/blob/master/GAN/AC-GAN/train.py#L58
+    #     z_cat = tf.multinomial(tf.ones((batch_size, num_classes), dtype=tf.float32) / num_classes, 1)
+    #     z_cat = tf.squeeze(z_cat, -1)
+    #     z_cat = tf.cast(z_cat, tf.int32)
+    #     z_cat = tf.one_hot(z_cat, depth = num_classes)
+    #     return z_cat
+    
+    def generate_cls_np(self, batch_size, num_classes):
+        z = np.random.multinomial(1, [1/num_classes]*num_classes, size=batch_size)
+        z = z.astype(np.int32)
+        return z
 
     def get_attrs_onehot(self, attrs, cls):
         attrs_onehot = []
@@ -78,7 +85,6 @@ class ACGAN_Solver(object):
             for step in range(self.train_iter+1):
                 start = time.time()
                 i = step % int(images.shape[0] // self.batch_size)
-                
                 if (step+1) % 1000 == 0:
                     # Maybe need to shuffle images?
                     np.random.shuffle(images)
@@ -87,8 +93,11 @@ class ACGAN_Solver(object):
                 batch_attrs_onehot = self.get_attrs_onehot(batch_attrs, self.feature_class)
                 
                 noise = self.generate_z(self.batch_size, self.z_dim)
-                sample_labels = self.generate_cls(self.batch_size, self.num_classes)
-                sample_labels = sample_labels.eval()
+                
+                # sample_labels = self.generate_cls(self.batch_size, self.num_classes)
+                # sample_labels = sample_labels.eval()
+                sample_labels = self.generate_cls_np(self.batch_size, self.num_classes)
+                
 
                 feed_dict = {model.noise: noise,
                             model.sample_labels: sample_labels,
