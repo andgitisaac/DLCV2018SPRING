@@ -9,7 +9,7 @@ class ACGAN(object):
         self.z_dim = z_dim
         self.learning_rate = learning_rate
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
-        self.class_loss_weight = 2
+        self.class_loss_weight = 1
 
     def batch_norm_params(self, is_training):
         return {
@@ -66,13 +66,9 @@ class ACGAN(object):
                                         normalizer_params=None,
                                         scope="conv1")                  # (batch_size, 32, 32, 64)                    
                     net = slim.conv2d(net, 128, scope='conv2')          # (batch_size, 16, 16, 128)
-                    net = slim.conv2d(net, 256, scope='conv3')          # (batch_size, 8, 8, 256)
-                    net = slim.conv2d(net, 512, scope='conv4')          # (batch_size, 4, 4, 512)
-
                     recog_class = slim.flatten(net)
-                    recog_class = slim.fully_connected(recog_class, 1024, scope="predict_class_fc1")
-                    recog_class = slim.fully_connected(recog_class, 128, scope="predict_class_fc2")
-                    recog_class = slim.fully_connected(recog_class, num_classes, scope="predict_class_fc3")
+                    net = slim.conv2d(net, 256, scope='conv3')          # (batch_size, 8, 8, 256) 
+                    net = slim.conv2d(net, 512, scope='conv4')          # (batch_size, 4, 4, 512) 
                     net = slim.conv2d(net, 1,
                                         activation_fn=None,
                                         kernel_size=[4, 4], 
@@ -81,6 +77,10 @@ class ACGAN(object):
                                         normalizer_params=None,
                                         scope='conv5')                  # (batch_size, 1, 1, 1)
                     net = slim.flatten(net)
+
+                    recog_class = slim.fully_connected(recog_class, 1024, scope="predict_class_fc1")
+                    recog_class = slim.fully_connected(recog_class, 128, scope="predict_class_fc2")
+                    recog_class = slim.fully_connected(recog_class, num_classes, scope="predict_class_output")
                     # net = tf.squeeze(net, [1, 2], name="squeeze")
                     # print(net.get_shape().as_list())
                     return net, recog_class
@@ -90,26 +90,29 @@ class ACGAN(object):
     def build_model(self):
         
         if self.mode == 'train':
-            with tf.variable_scope('gan'):
+            with tf.variable_scope('acgan'):
                 self.real_images = tf.placeholder(tf.float32, [None, 64, 64, 3], name='real_images')
                 self.real_labels = tf.placeholder(tf.float32, [None, self.num_classes], name='real_label')
                 self.flip_labels = tf.placeholder(tf.bool, name='label_is_flip')
                 
                 # concatenate noise and one-hot labels together
                 self.noise = tf.placeholder(tf.float32, [None, self.z_dim], name='sample_noise')
-                self.sample_labels =  tf.placeholder(tf.float32, [None, 2], name='sample_label')
+                self.sample_labels =  tf.placeholder(tf.float32, [None, self.num_classes], name='sample_label')
                 self.z = tf.concat(axis=1, values=[self.sample_labels, self.noise])            
                 
                 self.fake_images = self.generator(self.z)
 
                 self.d_real, self.cls_real = self.discriminator(self.real_images, self.num_classes)
-                self.d_fake, self.cls_fake = self.discriminator(self.fake_images, self.num_classes, reuse=True)                
+                self.d_fake, self.cls_fake = self.discriminator(self.fake_images, self.num_classes, reuse=True) 
+                        
 
                 # loss
                 with tf.variable_scope('Loss_Aux'):
                     self.loss_cls_real = tf.losses.softmax_cross_entropy(logits=self.cls_real, onehot_labels=self.real_labels)
                     self.loss_cls_fake = tf.losses.softmax_cross_entropy(logits=self.cls_fake, onehot_labels=self.sample_labels)
-                    self.loss_cls = self.loss_cls_real + self.loss_cls_fake
+                    # self.loss_cls_real = tf.losses.sparse_softmax_cross_entropy(logits=self.cls_real, labels=self.real_labels)
+                    # self.loss_cls_fake = tf.losses.sparse_softmax_cross_entropy(logits=self.cls_fake, labels=self.sample_labels)
+                    self.loss_cls = (self.loss_cls_real + self.loss_cls_fake) / 2.
 
                 with tf.variable_scope('Loss_D'):
                     real_labels = tf.cond(self.flip_labels, true_fn=(lambda: tf.zeros_like(self.d_real)), false_fn=(lambda: tf.ones_like(self.d_real)))
@@ -129,7 +132,8 @@ class ACGAN(object):
                     self.loss_g_gen = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.ones_like(self.d_fake), logits=self.d_fake)
                     self.loss_g = self.loss_g_gen + self.class_loss_weight * self.loss_cls
 
-
+                # self.soft_cls_fake = tf.nn.softmax(self.cls_fake)
+                # self.soft_cls_sample = self.sample_labels
 
                 # accuracy
                 # reference: https://github.com/gitlimlab/SSGAN-Tensorflow/blob/master/model.py
@@ -187,7 +191,7 @@ class ACGAN(object):
                     tf.summary.histogram(var.op.name, var)
 
         elif self.mode == 'sample':
-            with tf.variable_scope('gan'):                
+            with tf.variable_scope('acgan'):                
                 # concatenate noise and one-hot labels together
                 self.noise = tf.placeholder(tf.float32, [None, self.z_dim], name='sample_noise')
                 self.sample_labels =  tf.placeholder(tf.float32, [None, 2], name='sample_label')

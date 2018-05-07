@@ -51,8 +51,10 @@ class ACGAN_Solver(object):
         for i in range(len(attrs)):
             if attrs[i][cls] == 1:
                 attrs_onehot.append([1, 0])
+                # attrs_onehot.append([1])
             else:
                 attrs_onehot.append([0, 1])
+                # attrs_onehot.append([0])
         return attrs_onehot
 
 
@@ -86,9 +88,9 @@ class ACGAN_Solver(object):
             for step in range(self.train_iter+1):
                 start = time.time()
                 i = step % int(images.shape[0] // self.batch_size)
-                if (step+1) % 1000 == 0:
-                    # Maybe need to shuffle images?
-                    np.random.shuffle(images)
+                # if (step+1) % 1000 == 0:
+                #     # Maybe need to shuffle images?
+                #     np.random.shuffle(images)
                 batch_images = images[i*self.batch_size:(i+1)*self.batch_size]
                 batch_attrs = attrs[i*self.batch_size:(i+1)*self.batch_size]
                 batch_attrs_onehot = self.get_attrs_onehot(batch_attrs, self.feature_class)
@@ -97,24 +99,28 @@ class ACGAN_Solver(object):
                 
                 # sample_labels = self.generate_cls(self.batch_size, self.num_classes)
                 # sample_labels = sample_labels.eval()
-                sample_labels = self.generate_cls_np(self.batch_size, self.num_classes)
-                
+                # sample_labels = self.generate_cls_np(self.batch_size, self.num_classes)                
 
                 feed_dict = {model.noise: noise,
-                            model.sample_labels: sample_labels,
+                            # model.sample_labels: sample_labels,
+                            model.sample_labels: batch_attrs_onehot,
                             model.flip_labels: False,
                             model.real_images: batch_images,
                             model.real_labels: batch_attrs_onehot}
+
+                # print(sess.run(model.soft_cls_fake, feed_dict=feed_dict))
+                # print(sess.run(model.soft_cls_sample, feed_dict=feed_dict))
 
                 # train D
                 sess.run(model.d_train_op, feed_dict=feed_dict)
 
                 # flip labels to weaken D
-                if (step+1) % 2 == 0:
-                    feed_dict[model.flip_labels] = True
-                    sess.run(model.d_train_op, feed_dict=feed_dict)
+                # if (step+1) % 4 == 0:
+                #     feed_dict[model.flip_labels] = True
+                #     sess.run(model.d_train_op, feed_dict=feed_dict)
 
                 # train G
+                sess.run(model.g_train_op, feed_dict=feed_dict)
                 sess.run(model.g_train_op, feed_dict=feed_dict)
                 sess.run(model.g_train_op, feed_dict=feed_dict)
                 sess.run(model.g_train_op, feed_dict=feed_dict)
@@ -130,8 +136,8 @@ class ACGAN_Solver(object):
                     print ('Step: [%d/%d] loss_d: [%.5f] loss_g: [%.5f] Time: [%.5f]' \
                                %(step+1, self.train_iter, loss_d, loss_g, time.time() - start))
                 
-                if (step+1) % 2000 == 0:
-                    saver.save(sess, os.path.join(self.model_save_path, 'gan'), global_step=step+1)
+                if (step+1) % 2500 == 0:
+                    saver.save(sess, os.path.join(self.model_save_path, 'acgan'), global_step=step+1)
                     print ('model/gan-%d saved' %(step+1))
 
     def load_latest(self, saver, sess):
@@ -156,7 +162,7 @@ class ACGAN_Solver(object):
             # batch_size = self.batch_size if self.batch_size <= 32 else 32
             batch_size = 20
 
-            sample_labels = [ i // (batch_size // self.num_classes) for i in range(self.batch_size)]
+            sample_labels = [ i // (batch_size // self.num_classes) for i in range(batch_size)]
             sample_labels = to_categorical(sample_labels)
 
 
