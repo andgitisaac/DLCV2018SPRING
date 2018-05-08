@@ -28,7 +28,7 @@ class ACGAN_Solver(object):
         self.config = tf.ConfigProto()
         self.config.gpu_options.allow_growth=True
     
-    def generate_z(self, batch_size, z_dim):
+    def generate_z(self, batch_size, z_dim):        
         return np.random.uniform(-1, 1, size=(batch_size, z_dim)).astype(np.float32)
     
     # transforming tensor to numpy gets slower in for-loop...
@@ -89,12 +89,13 @@ class ACGAN_Solver(object):
                 start = time.time()
                 i = step % int(images.shape[0] // self.batch_size)
                 # if (step+1) % 1000 == 0:
-                #     # Maybe need to shuffle images?
+                #     # NO need to shuffle images when attributes involve!!!!
                 #     np.random.shuffle(images)
                 batch_images = images[i*self.batch_size:(i+1)*self.batch_size]
                 batch_attrs = attrs[i*self.batch_size:(i+1)*self.batch_size]
                 batch_attrs_onehot = self.get_attrs_onehot(batch_attrs, self.feature_class)
                 
+                np.random.seed(step)
                 noise = self.generate_z(self.batch_size, self.z_dim)
                 
                 # sample_labels = self.generate_cls(self.batch_size, self.num_classes)
@@ -123,7 +124,7 @@ class ACGAN_Solver(object):
                 sess.run(model.g_train_op, feed_dict=feed_dict)
                 sess.run(model.g_train_op, feed_dict=feed_dict)
                 sess.run(model.g_train_op, feed_dict=feed_dict)
-                sess.run(model.g_train_op, feed_dict=feed_dict)
+                # sess.run(model.g_train_op, feed_dict=feed_dict)
 
                 # print("D_REAL: ", sess.run(model.d_real, feed_dict))
                 # print("D_FAKE: ", sess.run(model.d_fake, feed_dict))
