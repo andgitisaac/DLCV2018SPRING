@@ -2,7 +2,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
 class ACGAN(object):
-    def __init__(self, mode='train', batch_size=32, num_classes=2, z_dim=100, learning_rate=1e-4):
+    def __init__(self, mode='train', batch_size=32, num_classes=2, z_dim=128, learning_rate=1e-4):
         self.mode = mode
         self.batch_size = batch_size
         self.num_classes = num_classes

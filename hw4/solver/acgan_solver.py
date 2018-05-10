@@ -9,7 +9,7 @@ from utils import load_pickle, grid_plot_pair
 
 class ACGAN_Solver(object):
 
-    def __init__(self, model, batch_size=32, z_dim=100,
+    def __init__(self, model, batch_size=32, z_dim=128,
                 num_classes=2, feature_class=None, train_iter=100000,
                 data_path='data', log_dir='logs',
                 sample_save_path='sample',
@@ -98,10 +98,6 @@ class ACGAN_Solver(object):
                 np.random.seed(step)
                 noise = self.generate_z(self.batch_size, self.z_dim)
                 
-                # sample_labels = self.generate_cls(self.batch_size, self.num_classes)
-                # sample_labels = sample_labels.eval()
-                # sample_labels = self.generate_cls_np(self.batch_size, self.num_classes)                
-
                 feed_dict = {model.noise: noise,
                             # model.sample_labels: sample_labels,
                             model.sample_labels: batch_attrs_onehot,
@@ -109,25 +105,21 @@ class ACGAN_Solver(object):
                             model.real_images: batch_images,
                             model.real_labels: batch_attrs_onehot}
 
-                # print(sess.run(model.soft_cls_fake, feed_dict=feed_dict))
-                # print(sess.run(model.soft_cls_sample, feed_dict=feed_dict))
-
                 # train D
+                sess.run(model.d_train_op, feed_dict=feed_dict)
                 sess.run(model.d_train_op, feed_dict=feed_dict)
 
                 # flip labels to weaken D
-                # if (step+1) % 4 == 0:
-                #     feed_dict[model.flip_labels] = True
-                #     sess.run(model.d_train_op, feed_dict=feed_dict)
+                if (step+1) % 4 == 0:
+                    feed_dict[model.flip_labels] = True
+                    sess.run(model.d_train_op, feed_dict=feed_dict)
 
                 # train G
                 sess.run(model.g_train_op, feed_dict=feed_dict)
                 sess.run(model.g_train_op, feed_dict=feed_dict)
                 sess.run(model.g_train_op, feed_dict=feed_dict)
-                # sess.run(model.g_train_op, feed_dict=feed_dict)
+                sess.run(model.g_train_op, feed_dict=feed_dict)
 
-                # print("D_REAL: ", sess.run(model.d_real, feed_dict))
-                # print("D_FAKE: ", sess.run(model.d_fake, feed_dict))
                 if (step+1) % 20 == 0:
                     summary, loss_d, loss_g = sess.run([model.summary_op,
                                                         model.loss_d,
@@ -169,6 +161,7 @@ class ACGAN_Solver(object):
 
             print('start sampling..!')
             for i in range(64):
+                np.random.seed(i)
                 noise = self.generate_z(batch_size//2, self.z_dim)
                 noise = np.concatenate((noise, noise), axis=0)
                 feed_dict = {model.noise: noise, model.sample_labels: sample_labels}
