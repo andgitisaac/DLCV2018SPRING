@@ -54,11 +54,10 @@ def main(_):
         if FLAGS.mode == 'train':
             solver.train()
         elif FLAGS.mode == 'sample':
-            print("GAN SAMPLE")
             solver.sample()
 
     elif FLAGS.network == 'acgan':
-        z_dim = 100
+        z_dim = 128
         feature_class = 'Smiling'
         model = ACGAN(mode=FLAGS.mode, batch_size=FLAGS.batch_size)
         solver = ACGAN_Solver(model, batch_size=FLAGS.batch_size, z_dim=z_dim, feature_class=feature_class, 
