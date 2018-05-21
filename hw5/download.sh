@@ -1,5 +1,4 @@
 #!/bin/bash
-fileid="1VuMGxrJEMRVzYcW6q38kG5keffB-jSz8"
-filename="data.zip"
-curl -c ./cookie -s -L "https://drive.google.com/uc?export=download&id=${fileid}" > /dev/null
-curl -Lb ./cookie "https://drive.google.com/uc?export=download&confirm=`awk '/download/ {print $NF}' ./cookie`&id=${fileid}" -o ${filename}
+scp -P 50505 huaijing@140.112.41.140:/home/huaijing/DLCV2018SPRING/hw5/model/*.py Desktop/workstation/hw5/model/
+scp -P 50505 huaijing@140.112.41.140:/home/huaijing/DLCV2018SPRING/hw5/utils/*.py Desktop/workstation/hw5/utils/
+scp -P 50505 huaijing@140.112.41.140:/home/huaijing/DLCV2018SPRING/hw5/*.py Desktop/workstation/hw5/
