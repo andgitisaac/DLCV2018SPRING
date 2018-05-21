@@ -1,0 +1,8 @@
+acgan_R_logs/
+acgan_R_model/
+acgan_logs/
+acgan_model/
+acgan_model_backup/
+gan_logs/
+vae_logs/
+
