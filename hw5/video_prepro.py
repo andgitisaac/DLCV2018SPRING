@@ -66,18 +66,19 @@ def get_h5py(fileType):
 
 
     count = 0
-    for (index, name, cat, label) in zip(video_index, video_name, video_cat, video_label):        
-        print("{}/{}".format(count, limit))
-        part = readShortVideo(video_root_path, cat, name)
-        part_length = part.shape[0]
-        start, end = count, count+part_length
-        frames[start:end] = part
-        labels[start:end] = label
-        indexes[start:end] = index
+    with h5py.File('{}.h5'.format(fileType), 'w') as hf:
+        for (index, name, cat, label) in zip(video_index, video_name, video_cat, video_label):        
+            print("{}/{}".format(count, limit))
+            part = readShortVideo(video_root_path, cat, name)
+            part_length = part.shape[0]
+            start, end = count, count+part_length
+            frames[start:end] = part
+            labels[start:end] = label
+            indexes[start:end] = index
 
-        count += part_length
+            count += part_length
 
-    with h5py.File('{}.h5'.format(fileType), 'r') as hf:
+        
         start = time.time()
         hf.create_dataset("frames",  data=frames)
         print("write frames in {}".format(time.time()-start))

@@ -8,7 +8,7 @@ from keras.models import Model
 from keras.layers import Input, Dense, GlobalAveragePooling2D, Dropout
 from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras import backend as K
-from keras.optimizers import SGD
+from keras.optimizers import SGD, Adam
 from keras.utils import to_categorical
 from utils.reader import getVideoList, readShortVideo
 
@@ -61,7 +61,7 @@ from utils.reader import getVideoList, readShortVideo
 
 def batch_gen(dir, dataType, batch_size=4):
     path = dir + '{}.h5'.format(dataType)
-    with h5py.File(path, 'w') as hf:
+    with h5py.File(path, 'r') as hf:
         frames = hf['frames'][:]
         labels = hf['labels'][:]
         indexes = hf['indexes'][:]
@@ -74,14 +74,15 @@ def batch_gen(dir, dataType, batch_size=4):
         for i in range(loopTime):
             batch_frames = frames[random_idx[i*batch_size:(i+1)*batch_size]]
             batch_labels = labels[random_idx[i*batch_size:(i+1)*batch_size]]
-            batch_indexes = indexes[random_idx[i*batch_size:(i+1)*batch_size]]
+            # batch_indexes = indexes[random_idx[i*batch_size:(i+1)*batch_size]]            
+            # print(batch_indexes, batch_labels)
             yield batch_frames, batch_labels
 
 
 
 
 root_dir = '/home/huaijing/DLCV2018SPRING/hw5/data/'
-batch_size = 4
+batch_size = 8
 steps = 29751 // batch_size
 validation_steps = 4843 // batch_size
 
@@ -104,7 +105,7 @@ for layer in base_model.layers:
     layer.trainable = False
 
 # compile the model (should be done *after* setting layers to non-trainable)
-model.compile(optimizer='sgd', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 model.summary()
 # for i, layer in enumerate(base_model.layers):
 #    print(i, layer.name)
@@ -133,7 +134,9 @@ for layer in model.layers[141:]:
 
 # we need to recompile the model for these modifications to take effect
 # we use SGD with a low learning rate
-model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+# optimizer = SGD(lr=0.0001, momentum=0.9)
+optimizer = Adam(lr=1e-4)
+model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 model.summary()
 
 # we train our model again (this time fine-tuning the top 2 inception blocks
