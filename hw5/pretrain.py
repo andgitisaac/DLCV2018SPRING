@@ -1,4 +1,5 @@
 import random
+import h5py
 import numpy as np
 from keras.applications.inception_v3 import InceptionV3
 from keras.applications.resnet50 import ResNet50
@@ -13,57 +14,76 @@ from utils.reader import getVideoList, readShortVideo
 
 
 
-def batch_gen(dir, dataType, batch_size=1):
-    if dataType == 'train':
-        frames_dicts = []
-        labels_dicts = []
-        for i in range(1, 5):
-            path = dir + 'train{}.npz'.format(i)
-            data = np.load(path)
-            frames_dicts.append(data['frames'].item())
-            labels_dicts.append(data['labels'].item())
-            print('TRAIN {} IS LOADED!!!'.format(i))
+# def batch_gen(dir, dataType, batch_size=1):
+#     if dataType == 'train':
+#         frames_dicts = []
+#         labels_dicts = []
+#         for i in range(1, 5):
+#             path = dir + 'train{}.npz'.format(i)
+#             data = np.load(path)
+#             frames_dicts.append(data['frames'].item())
+#             labels_dicts.append(data['labels'].item())
+#             print('TRAIN {} IS LOADED!!!'.format(i))
 
-        while True:
-            for frames_dict, labels_dict in zip(frames_dicts, labels_dicts):
-                for key, frames in sorted(frames_dict.items(), key=lambda x:random.random()):
-                    # loopLimit = len(frames) // batch_size
-                    # for i in range(loopLimit):
-                    #     frame = frames[i*batch_size:(i+1)*batch_size]
-                    #     label = to_categorical([labels_dict[key]]*batch_size, num_classes=11)
-                    #     yield frame, label
-                    # if len(frames) % batch_size != 0:
-                    #     frame = np.zeros((batch_size, 240, 320, 3))
-                    #     label = np.zeros((batch_size, 1))
-                    #     frame[:len(frames)-batch_size*loopLimit] = frames[batch_size*loopLimit:]
-                    #     label[:len(frames)-batch_size*loopLimit] = labels_dict[key]      
-                    #     label = to_categorical(label, num_classes=11)
-                    #     yield frame, label
+#         while True:
+#             for frames_dict, labels_dict in zip(frames_dicts, labels_dicts):
+#                 for key, frames in sorted(frames_dict.items(), key=lambda x:random.random()):
+#                     # loopLimit = len(frames) // batch_size
+#                     # for i in range(loopLimit):
+#                     #     frame = frames[i*batch_size:(i+1)*batch_size]
+#                     #     label = to_categorical([labels_dict[key]]*batch_size, num_classes=11)
+#                     #     yield frame, label
+#                     # if len(frames) % batch_size != 0:
+#                     #     frame = np.zeros((batch_size, 240, 320, 3))
+#                     #     label = np.zeros((batch_size, 1))
+#                     #     frame[:len(frames)-batch_size*loopLimit] = frames[batch_size*loopLimit:]
+#                     #     label[:len(frames)-batch_size*loopLimit] = labels_dict[key]      
+#                     #     label = to_categorical(label, num_classes=11)
+#                     #     yield frame, label
 
 
-                    for frame in sorted(frames, key=lambda x:random.random()):
-                        frame = np.expand_dims(frame, axis=0) / 127.5 - 1.0
-                        # label = np.expand_dims(to_categorical(labels_dict[key], num_classes=11), axis=0)
-                        label = np.expand_dims(labels_dict[key], axis=0)
-                        yield frame, label
-    else:
-        data = np.load(dir+'valid.npz')
-        frames_dict = data['frames'].item()
-        labels_dict = data['labels'].item()
-        while True:
-            for key, frames in sorted(frames_dict.items(), key=lambda x:random.random()):
-                for frame in sorted(frames, key=lambda x:random.random()):
-                    frame = np.expand_dims(frame, axis=0) / 127.5 - 1.0
-                    # label = np.expand_dims(to_categorical(labels_dict[key], num_classes=11), axis=0)
-                    label = np.expand_dims(labels_dict[key], axis=0)
-                    yield frame, label
+#                     for frame in sorted(frames, key=lambda x:random.random()):
+#                         frame = np.expand_dims(frame, axis=0) / 127.5 - 1.0
+#                         # label = np.expand_dims(to_categorical(labels_dict[key], num_classes=11), axis=0)
+#                         label = np.expand_dims(labels_dict[key], axis=0)
+#                         yield frame, label
+#     else:
+#         data = np.load(dir+'valid.npz')
+#         frames_dict = data['frames'].item()
+#         labels_dict = data['labels'].item()
+#         while True:
+#             for key, frames in sorted(frames_dict.items(), key=lambda x:random.random()):
+#                 for frame in sorted(frames, key=lambda x:random.random()):
+#                     frame = np.expand_dims(frame, axis=0) / 127.5 - 1.0
+#                     # label = np.expand_dims(to_categorical(labels_dict[key], num_classes=11), axis=0)
+#                     label = np.expand_dims(labels_dict[key], axis=0)
+#                     yield frame, label
+
+def batch_gen(dir, dataType, batch_size=4):
+    path = dir + '{}.h5'.format(dataType)
+    with h5py.File(path, 'w') as hf:
+        frames = hf['frames'][:]
+        labels = hf['labels'][:]
+        indexes = hf['indexes'][:]
+    while True:
+        length = indexes.shape[0]
+        random_idx = np.arange(length-1)
+        np.random.shuffle(random_idx)
+
+        loopTime = length // batch_size
+        for i in range(loopTime):
+            batch_frames = frames[random_idx[i*batch_size:(i+1)*batch_size]]
+            batch_labels = labels[random_idx[i*batch_size:(i+1)*batch_size]]
+            batch_indexes = indexes[random_idx[i*batch_size:(i+1)*batch_size]]
+            yield batch_frames, batch_labels
+
 
 
 
 root_dir = '/home/huaijing/DLCV2018SPRING/hw5/data/'
-# batch_size = 2
-steps = 29751
-validation_steps = 4843
+batch_size = 4
+steps = 29751 // batch_size
+validation_steps = 4843 // batch_size
 
 
 # create the base pre-trained model
@@ -92,10 +112,10 @@ model.summary()
 chkpt = 'ckpt/Resnet50_base.{epoch:02d}.h5'
 cp_cb = ModelCheckpoint(filepath = chkpt, monitor='val_loss', verbose=1, save_best_only=False, mode='auto')
 # tb = TensorBoard(log_dir='ckpt/base_logs', batch_size=1)
-model.fit_generator(batch_gen(root_dir, 'train'),
+model.fit_generator(batch_gen(root_dir, 'train', batch_size),
                     epochs=20,
                     steps_per_epoch=steps,
-                    validation_data=batch_gen(root_dir, 'valid'),
+                    validation_data=batch_gen(root_dir, 'valid', batch_size),
                     validation_steps=validation_steps,
                     verbose=1,
                     callbacks=[cp_cb])
@@ -121,10 +141,10 @@ model.summary()
 chkpt = 'ckpt/Resnet50_finetune.{epoch:02d}.h5'
 cp_cb = ModelCheckpoint(filepath = chkpt, monitor='val_loss', verbose=1, save_best_only=False, mode='auto')
 # tb = TensorBoard(log_dir='ckpt/finetune_logs', batch_size=1)
-model.fit_generator(batch_gen(root_dir, 'train'),
+model.fit_generator(batch_gen(root_dir, 'train', batch_size),
                     epochs=80,
                     steps_per_epoch=steps,
-                    validation_data=batch_gen(root_dir, 'valid'),
+                    validation_data=batch_gen(root_dir, 'valid', batch_size),
                     validation_steps=validation_steps,
                     verbose=1,
                     callbacks=[cp_cb])
