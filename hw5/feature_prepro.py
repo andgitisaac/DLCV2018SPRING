@@ -25,11 +25,10 @@ def get_h5py(fileType, model):
     video_label = videoList['Action_labels']
 
     count = 0
-    with h5py.File('data/{}_features_norm.h5'.format(fileType), 'w') as hf:
+    with h5py.File('data/{}_features.h5'.format(fileType), 'w') as hf:
         for i, (name, cat, label) in enumerate(zip(video_name, video_cat, video_label)):        
             print("{}/{} {}/{}".format(i, totalVideo, count, totalFrame))
             part = readShortVideo(video_root_path, cat, name)
-            part = (part / 127.5) - 1.0
             part_length = part.shape[0]
             start, end = count, count+part_length
             

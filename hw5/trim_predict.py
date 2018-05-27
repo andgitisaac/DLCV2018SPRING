@@ -2,10 +2,11 @@ import numpy as np
 import h5py
 from keras.models import load_model
 
-model_path = 'ckpt/trimmed_train.{:02d}.h5'.format(14)
+model_path = "/home/huaijing/DLCV2018SPRING/hw5/model/p2/trimmed_acc5261.h5"
 data_path = '/home/huaijing/DLCV2018SPRING/hw5/data/valid_features.h5'
 
 model = load_model(model_path)
+model.summary()
 with h5py.File(data_path, 'r') as hf:
     features = hf['features'][:]
     labels = hf['labels'][:]
